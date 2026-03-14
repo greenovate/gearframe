@@ -252,6 +252,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if not ns.charDB.sets then ns.charDB.sets = {} end
         if not ns.db.theme then ns.db.theme = "auto" end
         if ns.db.hideBoE == nil then ns.db.hideBoE = false end
+        if ns.db.panelCollapsed == nil then ns.db.panelCollapsed = false end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         if not ns.initialized then

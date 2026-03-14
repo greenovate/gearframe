@@ -65,23 +65,121 @@ function ns:InitUI()
     -- Refresh when PaperDollFrame appears
     PaperDollFrame:HookScript("OnShow", function()
         if ns.setPanel then
+            if not ns.db.panelCollapsed then
+                ns.setPanel:Show()
+            end
+            ns:UpdateToggleButton()
+            ns:RefreshSetList()
+        end
+    end)
+
+    CharacterFrame:HookScript("OnHide", function()
+        if ns.setPanel then ns.setPanel:Hide() end
+        if ns.toggleBtn then ns.toggleBtn:Hide() end
+    end)
+    CharacterFrame:HookScript("OnShow", function()
+        if ns.toggleBtn then ns.toggleBtn:Show() end
+        if ns.setPanel and not ns.db.panelCollapsed then
             ns.setPanel:Show()
             ns:RefreshSetList()
         end
     end)
+
+    -- Create toggle button on character frame
+    self:CreateToggleButton()
 end
 
 ------------------------------------------------------------------------
--- SET PANEL — sidebar attached to the right of CharacterFrame
+-- Anchor helper — ElvUI reskins CharacterFrame so its rect is wrong.
+-- Use CharacterFrame.backdrop (ElvUI) or CharacterFrame (stock UI).
+------------------------------------------------------------------------
+local function GetAnchorFrame()
+    if ns.Themes:IsElvUILoaded() and CharacterFrame.backdrop then
+        return CharacterFrame.backdrop
+    end
+    return CharacterFrame
+end
+
+------------------------------------------------------------------------
+-- Toggle button — tab on the right edge of the character frame border
+------------------------------------------------------------------------
+function ns:CreateToggleButton()
+    local btn = CreateFrame("Button", "GearFrameToggleBtn", CharacterFrame)
+    btn:SetSize(20, 60)
+    btn:SetFrameLevel(CharacterFrame:GetFrameLevel() + 5)
+    ns.toggleBtn = btn
+
+    local bg = btn:CreateTexture(nil, "BACKGROUND")
+    bg:SetAllPoints()
+    bg:SetColorTexture(0.08, 0.08, 0.08, 0.92)
+
+    local B = 1
+    local bt = btn:CreateTexture(nil, "OVERLAY")
+    bt:SetHeight(B); bt:SetPoint("TOPLEFT"); bt:SetPoint("TOPRIGHT")
+    bt:SetColorTexture(0.3, 0.3, 0.3, 1)
+    local bb = btn:CreateTexture(nil, "OVERLAY")
+    bb:SetHeight(B); bb:SetPoint("BOTTOMLEFT"); bb:SetPoint("BOTTOMRIGHT")
+    bb:SetColorTexture(0.3, 0.3, 0.3, 1)
+    local br = btn:CreateTexture(nil, "OVERLAY")
+    br:SetWidth(B); br:SetPoint("TOPRIGHT"); br:SetPoint("BOTTOMRIGHT")
+    br:SetColorTexture(0.3, 0.3, 0.3, 1)
+
+    local arrow = btn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    arrow:SetPoint("CENTER", 1, 0)
+    arrow:SetTextColor(0.7, 0.7, 0.7)
+    btn.arrow = arrow
+
+    btn:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    btn:GetHighlightTexture():SetAlpha(0.15)
+
+    btn:SetScript("OnClick", function() ns:ToggleSetPanel() end)
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+        GameTooltip:AddLine(ns.db.panelCollapsed and "Show Equipment Sets" or "Hide Equipment Sets", 1, 1, 1)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    self:UpdateToggleButton()
+end
+
+function ns:UpdateToggleButton()
+    if not ns.toggleBtn then return end
+    ns.toggleBtn:ClearAllPoints()
+    if ns.db.panelCollapsed then
+        ns.toggleBtn.arrow:SetText(">")
+        local anchor = GetAnchorFrame()
+        ns.toggleBtn:SetPoint("LEFT", anchor, "RIGHT", 0, 0)
+    else
+        ns.toggleBtn.arrow:SetText("<")
+        ns.toggleBtn:SetPoint("LEFT", ns.setPanel, "RIGHT", 0, 0)
+    end
+end
+
+function ns:ToggleSetPanel()
+    ns.db.panelCollapsed = not ns.db.panelCollapsed
+    if ns.db.panelCollapsed then
+        ns.setPanel:Hide()
+    else
+        ns.setPanel:Show()
+        ns:RefreshSetList()
+    end
+    self:UpdateToggleButton()
+end
+
+------------------------------------------------------------------------
+-- SET PANEL — flush sidebar anchored to the character panel
 ------------------------------------------------------------------------
 function ns:CreateSetPanel()
-    local panel = CreateFrame("Frame", "GearFramePanel", PaperDollFrame, "BackdropTemplate")
-    panel:SetSize(PANEL_WIDTH, 424)
-    panel:SetPoint("TOPLEFT", CharacterFrame, "TOPRIGHT", -2, -12)
+    local anchor = GetAnchorFrame()
+    local panel = CreateFrame("Frame", "GearFramePanel", CharacterFrame, "BackdropTemplate")
+    panel:SetWidth(PANEL_WIDTH)
+    panel:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 0, 0)
+    panel:SetPoint("BOTTOMLEFT", anchor, "BOTTOMRIGHT", 0, 0)
     panel:SetBackdrop(PANEL_BACKDROP)
-    panel:SetBackdropColor(0.08, 0.08, 0.08, 0.92)
-    panel:SetBackdropBorderColor(0.5, 0.5, 0.5, 1)
-    panel:SetFrameStrata("MEDIUM")
+    panel:SetBackdropColor(0.08, 0.08, 0.08, 0.95)
+    panel:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
+    panel:SetFrameLevel(CharacterFrame:GetFrameLevel() + 2)
     panel:EnableMouse(true)
     ns.setPanel = panel
 
