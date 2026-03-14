@@ -4,6 +4,12 @@
 
 Mirrors retail WoW's Equipment Manager for the Classic Anniversary client.
 
+![GearFrame Panel](screenshots/Screenshot%202026-03-14%20143408.png)
+
+![GearFrame Collapsed](screenshots/Screenshot%202026-03-14%20143128.png)
+
+![GearFrame Flyout](screenshots/Screenshot%202026-03-14%20143450.png)
+
 ## Features
 
 - **Save/load equipment sets** with custom names and icons
@@ -49,4 +55,4 @@ World of Warcraft\_anniversary_\Interface\AddOns\GearFrame\
 
 ## License
 
-MIT
+Source-Available — see [LICENSE](LICENSE). Attribution required. Derivatives must provide significant new value and credit "Evild / GearFrame" as the original source.

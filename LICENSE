@@ -1,16 +1,39 @@
-MIT License
+GearFrame Source-Available License
 
-Copyright (c) 2026 evild
+Copyright (c) 2026 Evild (greenovate)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+of this software and associated documentation files (the "Software"), to use
+the Software for personal, non-commercial purposes, subject to the following
+conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+1. ATTRIBUTION REQUIRED
+   Any project that incorporates, adapts, or is derived from this Software,
+   in whole or in substantial part, must prominently credit "Evild / GearFrame"
+   as the original source. This credit must appear in the project's README,
+   about/settings screen, and any public distribution page (e.g., CurseForge,
+   GitHub).
+
+2. SIGNIFICANT VALUE REQUIRED
+   You may not redistribute, republish, or re-upload this Software — whether
+   modified or unmodified — unless your version provides significant new
+   functionality, features, or value beyond what is present in the original.
+   Cosmetic changes, renaming, or trivial modifications do not constitute
+   significant value.
+
+3. NO COMMERCIAL USE WITHOUT PERMISSION
+   You may not sell, sublicense, or otherwise commercially exploit this
+   Software or any derivative works without prior written permission from
+   the copyright holder.
+
+4. NO MISREPRESENTATION
+   You may not present this Software or derivative works as entirely your
+   own original creation.
+
+5. SOURCE AVAILABILITY
+   If you distribute a modified version of this Software, you must make
+   your modified source code publicly available under the same terms as
+   this license.
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,

@@ -10,6 +10,7 @@ local ICON_SIZE     = 40
 local PAD           = 3
 local MAX_ITEMS     = 32
 local ARROW_SIZE    = 14
+local ARROW_TALL    = 36   -- full height of the equipment slot icon
 
 local flyout            -- main flyout frame
 local flyoutButtons     = {}
@@ -32,28 +33,28 @@ local QUALITY_COLORS = {
 -- Each entry: { point, relPoint, xOff, yOff }
 ------------------------------------------------------------------------
 local ARROW_ANCHORS = {
-    -- Left-side slots: arrow on the right edge
-    [1]  = { "LEFT",  "RIGHT",  -2,  0 },  -- Head
-    [2]  = { "LEFT",  "RIGHT",  -2,  0 },  -- Neck
-    [3]  = { "LEFT",  "RIGHT",  -2,  0 },  -- Shoulder
-    [4]  = { "LEFT",  "RIGHT",  -2,  0 },  -- Shirt
-    [15] = { "LEFT",  "RIGHT",  -2,  0 },  -- Back
-    [5]  = { "LEFT",  "RIGHT",  -2,  0 },  -- Chest
-    [9]  = { "LEFT",  "RIGHT",  -2,  0 },  -- Wrist
-    -- Right-side slots: arrow on the left edge
-    [10] = { "RIGHT", "LEFT",    2,  0 },  -- Hands
-    [6]  = { "RIGHT", "LEFT",    2,  0 },  -- Waist
-    [7]  = { "RIGHT", "LEFT",    2,  0 },  -- Legs
-    [8]  = { "RIGHT", "LEFT",    2,  0 },  -- Feet
-    [11] = { "RIGHT", "LEFT",    2,  0 },  -- Ring 1
-    [12] = { "RIGHT", "LEFT",    2,  0 },  -- Ring 2
-    [13] = { "RIGHT", "LEFT",    2,  0 },  -- Trinket 1
-    [14] = { "RIGHT", "LEFT",    2,  0 },  -- Trinket 2
-    [19] = { "RIGHT", "LEFT",    2,  0 },  -- Tabard
-    -- Bottom slots: arrow on the bottom edge
-    [16] = { "TOP",   "BOTTOM",  0,  2 },  -- Main Hand
-    [17] = { "TOP",   "BOTTOM",  0,  2 },  -- Off Hand
-    [18] = { "TOP",   "BOTTOM",  0,  2 },  -- Ranged
+    -- Left-side slots: arrow on the right edge, pointing right
+    [1]  = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Head
+    [2]  = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Neck
+    [3]  = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Shoulder
+    [4]  = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Shirt
+    [15] = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Back
+    [5]  = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Chest
+    [9]  = { "LEFT",  "RIGHT",  -2,  0, ">" },  -- Wrist
+    -- Right-side slots: arrow on the left edge, pointing left
+    [10] = { "RIGHT", "LEFT",    2,  0, "<" },  -- Hands
+    [6]  = { "RIGHT", "LEFT",    2,  0, "<" },  -- Waist
+    [7]  = { "RIGHT", "LEFT",    2,  0, "<" },  -- Legs
+    [8]  = { "RIGHT", "LEFT",    2,  0, "<" },  -- Feet
+    [11] = { "RIGHT", "LEFT",    2,  0, "<" },  -- Ring 1
+    [12] = { "RIGHT", "LEFT",    2,  0, "<" },  -- Ring 2
+    [13] = { "RIGHT", "LEFT",    2,  0, "<" },  -- Trinket 1
+    [14] = { "RIGHT", "LEFT",    2,  0, "<" },  -- Trinket 2
+    [19] = { "RIGHT", "LEFT",    2,  0, "<" },  -- Tabard
+    -- Bottom slots: arrow below, pointing down
+    [16] = { "TOP",   "BOTTOM",  0,  2, "v" },  -- Main Hand
+    [17] = { "TOP",   "BOTTOM",  0,  2, "v" },  -- Off Hand
+    [18] = { "TOP",   "BOTTOM",  0,  2, "v" },  -- Ranged
 }
 
 ------------------------------------------------------------------------
@@ -326,27 +327,33 @@ function ns:CreateArrowButtons()
         if slotBtn then
             local slotID = nameToSlot[btnName]
             if slotID then
-                local anchor = ARROW_ANCHORS[slotID] or { "LEFT", "RIGHT", -2, 0 }
+                local anchor = ARROW_ANCHORS[slotID] or { "LEFT", "RIGHT", -2, 0, ">" }
+                local isBottom = (anchor[5] == "v")
 
                 local arrow = CreateFrame("Button", "GearFrameArrow" .. slotID, slotBtn)
-                arrow:SetSize(ARROW_SIZE, ARROW_SIZE)
+                if isBottom then
+                    arrow:SetSize(ARROW_TALL, ARROW_SIZE)
+                else
+                    arrow:SetSize(ARROW_SIZE, ARROW_TALL)
+                end
                 arrow:SetPoint(anchor[1], slotBtn, anchor[2], anchor[3], anchor[4])
                 arrow:SetFrameLevel(slotBtn:GetFrameLevel() + 5)
                 arrow.tcSlotID = slotID
 
-                -- Arrow triangle texture
-                local tex = arrow:CreateTexture(nil, "ARTWORK")
-                tex:SetAllPoints()
-                tex:SetTexture("Interface\\Buttons\\SquareButtonTextures")
-                tex:SetTexCoord(0.42187500, 0.23437500, 0.01562500, 0.20312500)
-                arrow.arrowTex = tex
+                -- Dark background
+                local bg = arrow:CreateTexture(nil, "BACKGROUND")
+                bg:SetAllPoints()
+                bg:SetColorTexture(0.05, 0.05, 0.05, 0.7)
+
+                -- Gold arrow text, full size
+                local arrowText = arrow:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+                arrowText:SetPoint("CENTER", 0, 0)
+                arrowText:SetText(anchor[5] or ">")
+                arrowText:SetTextColor(1, 0.82, 0, 0.9)
+                arrow.arrowTex = arrowText
 
                 -- Highlight on hover
-                local hl = arrow:CreateTexture(nil, "HIGHLIGHT")
-                hl:SetAllPoints()
-                hl:SetTexture("Interface\\Buttons\\SquareButtonTextures")
-                hl:SetTexCoord(0.42187500, 0.23437500, 0.01562500, 0.20312500)
-                hl:SetAlpha(0.4)
+                arrow:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
 
                 -- Glow when flyout is open for this slot
                 local glow = arrow:CreateTexture(nil, "OVERLAY")
