@@ -141,6 +141,29 @@ function ns.Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ccffGearFrame:|r " .. tostring(msg))
 end
 
+-- Check if an item is Bind on Equip
+function ns.IsBindOnEquip(link)
+    if not link then return false end
+    local tt = ns.scanTooltip
+    if not tt then
+        tt = CreateFrame("GameTooltip", "GearFrameScanTooltip", nil, "GameTooltipTemplate")
+        tt:SetOwner(WorldFrame, "ANCHOR_NONE")
+        ns.scanTooltip = tt
+    end
+    tt:ClearLines()
+    tt:SetHyperlink(link)
+    for i = 2, min(6, tt:NumLines()) do
+        local line = _G["GearFrameScanTooltipTextLeft" .. i]
+        if line then
+            local text = line:GetText()
+            if text and text:find(ITEM_BIND_ON_EQUIP) then
+                return true
+            end
+        end
+    end
+    return false
+end
+
 -- Does this item link fit into the given equipment slot?
 function ns.CanItemGoInSlot(link, slotID)
     if not link or not slotID then return false end
@@ -153,19 +176,22 @@ end
 -- All items from bags 0-4 that can go into a specific slot
 function ns.GetBagItemsForSlot(slotID)
     local items = {}
+    local filterBoE = ns.db and ns.db.hideBoE
     for bag = 0, 4 do
         local numSlots = ns.GetContainerNumSlots(bag)
         for slot = 1, numSlots do
             local link = ns.GetContainerItemLink(bag, slot)
             if link and ns.CanItemGoInSlot(link, slotID) then
-                local texture = ns.GetContainerItemTexture(bag, slot)
-                table.insert(items, {
-                    bag     = bag,
-                    slot    = slot,
-                    link    = link,
-                    itemID  = ns.GetItemIDFromLink(link),
-                    texture = texture,
-                })
+                if not filterBoE or not ns.IsBindOnEquip(link) then
+                    local texture = ns.GetContainerItemTexture(bag, slot)
+                    table.insert(items, {
+                        bag     = bag,
+                        slot    = slot,
+                        link    = link,
+                        itemID  = ns.GetItemIDFromLink(link),
+                        texture = texture,
+                    })
+                end
             end
         end
     end
@@ -225,6 +251,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         ns.charDB = GearFrameCharDB
         if not ns.charDB.sets then ns.charDB.sets = {} end
         if not ns.db.theme then ns.db.theme = "auto" end
+        if ns.db.hideBoE == nil then ns.db.hideBoE = false end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         if not ns.initialized then

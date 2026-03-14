@@ -5,7 +5,7 @@
 local _, ns = ...
 
 local SETTINGS_WIDTH  = 320
-local SETTINGS_HEIGHT = 220
+local SETTINGS_HEIGHT = 260
 
 ------------------------------------------------------------------------
 -- Public init (called from Core.lua after DB is ready)
@@ -113,6 +113,31 @@ function ns:CreateSettingsPanel()
     end
     activeLabel:SetText("Active theme: |cff80c0ff" .. activeName .. "|r")
     ns.activeThemeLabel = activeLabel
+
+    -- Divider 2
+    local div2 = panel:CreateTexture(nil, "ARTWORK")
+    div2:SetSize(SETTINGS_WIDTH - 40, 1)
+    div2:SetPoint("TOPLEFT", 20, -134)
+    div2:SetColorTexture(0.4, 0.4, 0.4, 0.5)
+
+    -- Hide BoE checkbox
+    local boeCheck = CreateFrame("CheckButton", "GearFrameBoECheck", panel, "UICheckButtonTemplate")
+    boeCheck:SetSize(22, 22)
+    boeCheck:SetPoint("TOPLEFT", 18, -142)
+    boeCheck:SetChecked(ns.db.hideBoE or false)
+    boeCheck:SetScript("OnClick", function(self)
+        ns.db.hideBoE = self:GetChecked() and true or false
+        if ns.db.hideBoE then
+            ns.Print("BoE items will be hidden from flyout slots.")
+        else
+            ns.Print("BoE items will be shown in flyout slots.")
+        end
+    end)
+    local boeText = _G[boeCheck:GetName() .. "Text"]
+    if boeText then
+        boeText:SetText("Hide Bind-on-Equip items from slot flyouts")
+        boeText:SetFontObject("GameFontHighlightSmall")
+    end
 
     -- Close button
     local closeBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
