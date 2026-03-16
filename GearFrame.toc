@@ -1,4 +1,4 @@
-## Interface: 20504
+## Interface: 20505
 ## Title: GearFrame
 ## Notes: Equipment Manager for TBC Classic Anniversary — mirrors retail WoW's Equipment Manager.
 ## Author: Evild

@@ -141,27 +141,43 @@ function ns.Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage("|cff33ccffGearFrame:|r " .. tostring(msg))
 end
 
--- Check if an item is Bind on Equip
+-- Check if an item is Bind on Equip AND not yet soulbound.
+-- GetItemInfo bindType: 0=none, 1=BoP, 2=BoE, 3=BoU
+-- A BoE item in your bag that you've already equipped is now soulbound,
+-- so we also check the tooltip for "Soulbound" to exclude those.
 function ns.IsBindOnEquip(link)
     if not link then return false end
+
+    -- First: check base item bind type via GetItemInfo
+    local _, _, _, _, _, _, _, _, _, _, _, _, _, bindType = GetItemInfo(link)
+    if not bindType or bindType ~= 2 then
+        return false  -- not a BoE item at all
+    end
+
+    -- It IS a BoE base item. But has it already been equipped (now soulbound)?
+    -- Scan tooltip for "Soulbound" text
     local tt = ns.scanTooltip
     if not tt then
         tt = CreateFrame("GameTooltip", "GearFrameScanTooltip", nil, "GameTooltipTemplate")
-        tt:SetOwner(WorldFrame, "ANCHOR_NONE")
         ns.scanTooltip = tt
     end
+    tt:SetOwner(WorldFrame, "ANCHOR_NONE")
     tt:ClearLines()
     tt:SetHyperlink(link)
-    for i = 2, min(6, tt:NumLines()) do
+
+    local soulboundText = ITEM_SOULBOUND or "Soulbound"
+    for i = 2, min(5, tt:NumLines()) do
         local line = _G["GearFrameScanTooltipTextLeft" .. i]
         if line then
             local text = line:GetText()
-            if text and text:find(ITEM_BIND_ON_EQUIP) then
-                return true
+            if text and text:find(soulboundText) then
+                return false  -- already soulbound, don't filter
             end
         end
     end
-    return false
+
+    -- Base type is BoE and not yet soulbound — filter it
+    return true
 end
 
 -- Does this item link fit into the given equipment slot?
