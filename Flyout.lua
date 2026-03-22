@@ -272,14 +272,22 @@ function ns:ShowFlyout(slotButton, slotID, pinned)
         btn:SetAlpha(1)
         btn.eqTag:Hide()
 
-        local capBag, capSlot, capTargetSlot = item.bag, item.slot, slotID  -- capture
+        local capItemLink = item.link  -- capture the link, re-resolve at click time
+        local capTargetSlot = slotID
         btn:SetScript("OnClick", function()
             if InCombatLockdown() then
                 ns.Print("Cannot change equipment in combat."); return
             end
-            ClearCursor()
-            ns.PickupContainerItem(capBag, capSlot)
-            PickupInventoryItem(capTargetSlot)
+            -- Re-find the item by link at click time (bags may have shifted)
+            local itemID = ns.GetItemIDFromLink(capItemLink)
+            if itemID then
+                local freshBag, freshSlot = ns.FindItemInBags(itemID)
+                if freshBag and freshSlot then
+                    ClearCursor()
+                    ns.PickupContainerItem(freshBag, freshSlot)
+                    PickupInventoryItem(capTargetSlot)
+                end
+            end
             ns:CloseFlyout()
         end)
 

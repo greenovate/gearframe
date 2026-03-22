@@ -4,8 +4,8 @@
 ------------------------------------------------------------------------
 local addonName, ns = ...
 
-ns.version = "1.0.0"
-ns.MAX_SETS = 10
+ns.version = "1.2.0"
+ns.MAX_SETS = 20
 
 ------------------------------------------------------------------------
 -- API Compatibility Shims (Anniversary client uses modern APIs)
@@ -269,6 +269,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if not ns.db.theme then ns.db.theme = "auto" end
         if ns.db.hideBoE == nil then ns.db.hideBoE = false end
         if ns.db.panelCollapsed == nil then ns.db.panelCollapsed = false end
+        if ns.db.protectSetItems == nil then ns.db.protectSetItems = true end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         if not ns.initialized then
@@ -278,6 +279,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
             ns:InitUI()
             ns:InitFlyout()
             ns:InitTooltips()
+            ns:InitProtection()
             ns:InitSettings()
 
             -- Slash commands

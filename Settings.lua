@@ -5,7 +5,7 @@
 local _, ns = ...
 
 local SETTINGS_WIDTH  = 320
-local SETTINGS_HEIGHT = 260
+local SETTINGS_HEIGHT = 300
 
 ------------------------------------------------------------------------
 -- Public init (called from Core.lua after DB is ready)
@@ -137,6 +137,25 @@ function ns:CreateSettingsPanel()
     if boeText then
         boeText:SetText("Hide Bind-on-Equip items from slot flyouts")
         boeText:SetFontObject("GameFontHighlightSmall")
+    end
+
+    -- Item protection checkbox
+    local protCheck = CreateFrame("CheckButton", "GearFrameProtCheck", panel, "UICheckButtonTemplate")
+    protCheck:SetSize(22, 22)
+    protCheck:SetPoint("TOPLEFT", 18, -168)
+    protCheck:SetChecked(ns.db.protectSetItems ~= false)  -- default ON
+    protCheck:SetScript("OnClick", function(self)
+        ns.db.protectSetItems = self:GetChecked() and true or false
+        if ns.db.protectSetItems then
+            ns.Print("Set item protection enabled (sell/delete/bank warnings).")
+        else
+            ns.Print("Set item protection disabled.")
+        end
+    end)
+    local protText = _G[protCheck:GetName() .. "Text"]
+    if protText then
+        protText:SetText("Warn before selling/deleting/banking set items")
+        protText:SetFontObject("GameFontHighlightSmall")
     end
 
     -- Close button

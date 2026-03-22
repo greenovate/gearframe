@@ -89,6 +89,7 @@ function ns:DeleteSet(index)
     local name = set.name
     table.remove(self.charDB.sets, index)
     ns.Print("Deleted set: " .. name)
+    if ns.ClearSetSelection then ns:ClearSetSelection() end
     if ns.RefreshSetList then ns:RefreshSetList() end
 end
 
@@ -146,6 +147,79 @@ function ns:IsSetEquipped(setData)
         if currentID ~= itemID then return false end
     end
     return true
+end
+
+------------------------------------------------------------------------
+-- Audit a set: returns status, missing items, changed items
+-- status: "equipped", "ready", "modified", "missing"
+--   equipped = all items currently worn
+--   ready    = all items in bags or equipped, can equip now
+--   modified = currently wearing set items but some slots changed
+--   missing  = one or more items not found in bags or equipped
+------------------------------------------------------------------------
+function ns:AuditSet(setData)
+    if not setData then return "missing", {}, {}, 0, 0 end
+
+    local missing  = {}   -- { { slotID, itemID, itemName } }
+    local changed  = {}   -- { { slotID, itemID, currentID, itemName, currentName } }
+    local equipped = 0
+    local total    = 0
+
+    for slotID, itemID in pairs(setData.items) do
+        if itemID and itemID > 0 then
+            total = total + 1
+            local currentID = GetInventoryItemID("player", slotID) or 0
+            local itemName  = GetItemInfo(itemID) or ("item#" .. itemID)
+
+            if currentID == itemID then
+                equipped = equipped + 1
+            else
+                -- Not in the right slot — is it in bags or another slot?
+                local inBag = ns.FindItemInBags(itemID)
+                local inOtherSlot = false
+                if not inBag then
+                    for sid = 1, ns.NUM_EQUIP_SLOTS do
+                        if GetInventoryItemID("player", sid) == itemID then
+                            inOtherSlot = true
+                            break
+                        end
+                    end
+                end
+
+                if inBag or inOtherSlot then
+                    -- Item exists but slot has something different
+                    local currentName = currentID > 0 and (GetItemInfo(currentID) or ("item#" .. currentID)) or "Empty"
+                    table.insert(changed, {
+                        slotID      = slotID,
+                        itemID      = itemID,
+                        currentID   = currentID,
+                        itemName    = itemName,
+                        currentName = currentName,
+                    })
+                else
+                    -- Item not found anywhere
+                    table.insert(missing, {
+                        slotID   = slotID,
+                        itemID   = itemID,
+                        itemName = itemName,
+                    })
+                end
+            end
+        end
+    end
+
+    local status
+    if equipped == total then
+        status = "equipped"
+    elseif #missing > 0 then
+        status = "missing"
+    elseif #changed > 0 then
+        status = "modified"
+    else
+        status = "ready"
+    end
+
+    return status, missing, changed, equipped, total
 end
 
 ------------------------------------------------------------------------

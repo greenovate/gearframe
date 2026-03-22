@@ -204,13 +204,20 @@ function ns.Themes:SkinButton(btn)
         fs:SetTextColor(unpack(t.btnText))
     end
 
-    -- Hover/press feedback
-    btn:HookScript("OnEnter", function(self)
-        self:SetBackdropBorderColor(0.50, 0.70, 1.00, 1)
-    end)
-    btn:HookScript("OnLeave", function(self)
-        self:SetBackdropBorderColor(unpack(t.btnBorder))
-    end)
+    -- Hover/press feedback (guard against stacking)
+    if not btn.tcHoverHooked then
+        btn:HookScript("OnEnter", function(self)
+            if self.SetBackdropBorderColor then
+                self:SetBackdropBorderColor(0.50, 0.70, 1.00, 1)
+            end
+        end)
+        btn:HookScript("OnLeave", function(self)
+            if self.SetBackdropBorderColor and t.btnBorder then
+                self:SetBackdropBorderColor(unpack(t.btnBorder))
+            end
+        end)
+        btn.tcHoverHooked = true
+    end
 end
 
 ------------------------------------------------------------------------
@@ -351,6 +358,11 @@ function ns.Themes:ApplyAll()
 
     -- Settings panel buttons
     if ns.settingsPanel then self:SkinFrame(ns.settingsPanel) end
+
+    -- Update active theme label in settings
+    if ns.activeThemeLabel then
+        ns.activeThemeLabel:SetText("Active theme: |cff80c0ff" .. t.name .. "|r")
+    end
 
     ns.Print("Theme applied: " .. t.name)
 end

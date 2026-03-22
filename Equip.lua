@@ -1,10 +1,15 @@
 ------------------------------------------------------------------------
 -- GearFrame — Equip
--- Equipment swap engine with combat-queue support
+-- Event-driven equipment swap engine with combat-queue support
 ------------------------------------------------------------------------
 local _, ns = ...
 
-local pendingSet = nil   -- set index queued for after combat
+local pendingSet = nil   -- set queued for after combat
+local swapQueue  = {}    -- ordered list of { slotID, itemID } pending swap
+local swapSetName = nil  -- name of set being swapped (for status message)
+local swapFailed  = 0
+local swapDone    = 0
+local failedItems = {}    -- { "SlotName: ItemName", ... }
 
 ------------------------------------------------------------------------
 -- Main equip entry point
@@ -28,7 +33,8 @@ function ns:EquipSetByName(name)
 end
 
 ------------------------------------------------------------------------
--- Core swap logic
+-- Core swap logic — builds a queue and processes one swap at a time,
+-- waiting for PLAYER_EQUIPMENT_CHANGED between each operation.
 ------------------------------------------------------------------------
 function ns:EquipSetData(set)
     -- Combat check — queue for later
@@ -44,46 +50,87 @@ function ns:EquipSetData(set)
         return
     end
 
-    local swapped = 0
-    local failed  = 0
+    -- Build swap queue: unequips first (desiredID == 0), then equips
+    swapQueue  = {}
+    swapFailed = 0
+    swapDone   = 0
+    swapSetName = set.name
+    failedItems = {}
 
-    -- First pass: handle slots that need to be emptied
+    -- Pass 1: slots that need to be emptied
     for slotID, desiredID in pairs(set.items) do
         if desiredID == 0 then
             local currentID = GetInventoryItemID("player", slotID)
             if currentID then
-                if self:UnequipSlot(slotID) then
-                    swapped = swapped + 1
-                else
-                    failed = failed + 1
-                end
+                table.insert(swapQueue, { slotID = slotID, itemID = 0 })
             end
         end
     end
 
-    -- Second pass: equip desired items
+    -- Pass 2: slots that need items equipped
     for slotID, desiredID in pairs(set.items) do
         if desiredID and desiredID > 0 then
             local currentID = GetInventoryItemID("player", slotID) or 0
             if currentID ~= desiredID then
-                if self:EquipItemToSlot(desiredID, slotID) then
-                    swapped = swapped + 1
-                else
-                    failed = failed + 1
-                end
+                table.insert(swapQueue, { slotID = slotID, itemID = desiredID })
             end
         end
     end
 
-    if failed > 0 then
-        ns.Print(string.format("Equipped \"%s\" (%d swapped, %d failed — items may be missing).",
-            set.name, swapped, failed))
-    else
-        ns.Print("Equipped: " .. set.name)
+    if #swapQueue == 0 then
+        ns.Print("\"" .. set.name .. "\" is already equipped.")
+        return
     end
 
-    -- Refresh UI state
-    if ns.RefreshSetList then ns:RefreshSetList() end
+    -- Start processing
+    self:ProcessNextSwap()
+end
+
+------------------------------------------------------------------------
+-- Process one swap from the queue
+------------------------------------------------------------------------
+function ns:ProcessNextSwap()
+    if #swapQueue == 0 then
+        -- All done
+        if swapFailed > 0 then
+            ns.Print(string.format("Equipped \"%s\" (%d swapped, %d failed).",
+                swapSetName, swapDone, swapFailed))
+            for _, desc in ipairs(failedItems) do
+                ns.Print("  |cffff4444Missing:|r " .. desc)
+            end
+        else
+            ns.Print("Equipped: " .. swapSetName)
+        end
+        swapSetName = nil
+        failedItems = {}
+        if ns.RefreshSetList then ns:RefreshSetList() end
+        return
+    end
+
+    local op = table.remove(swapQueue, 1)
+
+    if op.itemID == 0 then
+        -- Unequip
+        if self:UnequipSlot(op.slotID) then
+            swapDone = swapDone + 1
+        else
+            swapFailed = swapFailed + 1
+            local slotInfo = ns.SLOT_BY_ID[op.slotID]
+            table.insert(failedItems, (slotInfo and slotInfo.display or "Slot " .. op.slotID) .. ": could not unequip")
+        end
+        C_Timer.After(0.1, function() ns:ProcessNextSwap() end)
+    else
+        -- Equip
+        if self:EquipItemToSlot(op.itemID, op.slotID) then
+            swapDone = swapDone + 1
+        else
+            swapFailed = swapFailed + 1
+            local itemName = GetItemInfo(op.itemID) or ("item#" .. op.itemID)
+            local slotInfo = ns.SLOT_BY_ID[op.slotID]
+            table.insert(failedItems, (slotInfo and slotInfo.display or "Slot " .. op.slotID) .. ": " .. itemName)
+        end
+        C_Timer.After(0.1, function() ns:ProcessNextSwap() end)
+    end
 end
 
 ------------------------------------------------------------------------
@@ -92,6 +139,9 @@ end
 function ns:EquipItemToSlot(itemID, targetSlot)
     -- Already there?
     if GetInventoryItemID("player", targetSlot) == itemID then return true end
+
+    -- Clear any existing cursor item safely
+    if CursorHasItem() then ClearCursor() end
 
     -- Look in bags
     local bag, slot = ns.FindItemInBags(itemID)
@@ -105,9 +155,7 @@ function ns:EquipItemToSlot(itemID, targetSlot)
     -- Item might be in another equipped slot (e.g., ring in wrong finger)
     for sid = 1, ns.NUM_EQUIP_SLOTS do
         if sid ~= targetSlot and GetInventoryItemID("player", sid) == itemID then
-            -- Swap via bags: unequip from wrong slot, then equip to right slot
             if self:UnequipSlot(sid) then
-                -- Item is now in bags; find and equip
                 local b, s = ns.FindItemInBags(itemID)
                 if b and s then
                     ClearCursor()

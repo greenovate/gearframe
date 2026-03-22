@@ -24,6 +24,12 @@ local selectedSetIndex = nil
 local editingSetIndex  = nil      -- nil = new, number = editing
 local selectedIcon     = nil
 
+-- Public: clear selection (called when deleting via slash command)
+function ns:ClearSetSelection()
+    selectedSetIndex = nil
+    if ns.RefreshSetList then ns:RefreshSetList() end
+end
+
 ------------------------------------------------------------------------
 -- Reusable backdrops (fallback only — theme system overrides these)
 ------------------------------------------------------------------------
@@ -258,30 +264,73 @@ function ns:CreateSetPanel()
             if self.setIndex then ns:EquipSet(self.setIndex) end
         end)
 
-        -- Tooltip
+        -- Tooltip — smart audit
         btn:SetScript("OnEnter", function(self)
             if not self.setIndex then return end
             local set = ns.charDB.sets[self.setIndex]
             if not set then return end
+            local status, missing, changed, equipped, total = ns:AuditSet(set)
+
             GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
             GameTooltip:AddLine(set.name, 1, 0.82, 0)
             GameTooltip:AddLine(" ")
+
+            -- Status summary line
+            if status == "equipped" then
+                GameTooltip:AddLine("Status: Fully equipped", 0, 1, 0)
+            elseif status == "ready" then
+                GameTooltip:AddLine("Status: Ready to equip (" .. equipped .. "/" .. total .. " worn)", 0.5, 0.8, 1)
+            elseif status == "modified" then
+                GameTooltip:AddLine("Status: Modified — " .. #changed .. " slot(s) changed since last save", 1, 0.6, 0)
+            elseif status == "missing" then
+                GameTooltip:AddLine("Status: " .. #missing .. " item(s) MISSING — cannot fully equip", 1, 0.2, 0.2)
+            end
+
+            GameTooltip:AddLine(" ")
+
+            -- Show each slot
             for _, info in ipairs(ns.SLOT_INFO) do
                 local itemID = set.items[info.id]
                 if itemID and itemID > 0 then
                     local n, _, q = GetItemInfo(itemID)
-                    if n then
-                        local r, g, b = GetItemQualityColor(q or 1)
-                        GameTooltip:AddLine(info.display .. ": " .. n, r, g, b)
+                    local currentID = GetInventoryItemID("player", info.id) or 0
+
+                    if currentID == itemID then
+                        -- Equipped correctly
+                        if n then
+                            local r, g, b = GetItemQualityColor(q or 1)
+                            GameTooltip:AddLine(info.display .. ": " .. n .. "  |cff00ff00\226\156\147|r", r, g, b)
+                        end
                     else
-                        GameTooltip:AddLine(info.display .. ": item#" .. itemID, 0.5, 0.5, 0.5)
+                        -- Check if missing or just in bags
+                        local isMissing = true
+                        local inBag = ns.FindItemInBags(itemID)
+                        if inBag then isMissing = false end
+                        if isMissing then
+                            for sid = 1, ns.NUM_EQUIP_SLOTS do
+                                if GetInventoryItemID("player", sid) == itemID then
+                                    isMissing = false
+                                    break
+                                end
+                            end
+                        end
+
+                        if isMissing then
+                            GameTooltip:AddLine(info.display .. ": " .. (n or "item#" .. itemID) .. "  |cffff3333MISSING|r", 0.6, 0.2, 0.2)
+                        elseif currentID > 0 then
+                            local currentName = GetItemInfo(currentID) or "?"
+                            GameTooltip:AddLine(info.display .. ": " .. (n or "?") .. "  |cffffaa00(wearing: " .. currentName .. ")|r", 1, 0.6, 0)
+                        else
+                            if n then
+                                local r, g, b = GetItemQualityColor(q or 1)
+                                GameTooltip:AddLine(info.display .. ": " .. n .. "  |cff80c0ff(in bags)|r", r, g, b)
+                            end
+                        end
                     end
                 end
             end
+
             GameTooltip:AddLine(" ")
-            if ns:IsSetEquipped(set) then
-                GameTooltip:AddLine("Currently equipped.", 0, 1, 0)
-            end
             GameTooltip:AddLine("Click to select  |  Double-click to equip", 0.5, 0.5, 0.5, true)
             GameTooltip:AddLine("Right-click to edit", 0.5, 0.5, 0.5, true)
             GameTooltip:Show()
@@ -381,6 +430,19 @@ function ns:RefreshSetList()
             btn.nameText:SetText(set.name)
             btn.checkmark[ns:IsSetEquipped(set) and "Show" or "Hide"](btn.checkmark)
             btn.selTex[selectedSetIndex == index and "Show" or "Hide"](btn.selTex)
+
+            -- Color name based on set status
+            local status = ns:AuditSet(set)
+            if status == "equipped" then
+                btn.nameText:SetTextColor(0.2, 1, 0.2)       -- green: fully equipped
+            elseif status == "missing" then
+                btn.nameText:SetTextColor(1, 0.3, 0.3)       -- red: items missing
+            elseif status == "modified" then
+                btn.nameText:SetTextColor(1, 0.65, 0.15)     -- orange: changed since save
+            else
+                btn.nameText:SetTextColor(1, 1, 1)            -- white: ready
+            end
+
             btn:Show()
         else
             btn.setIndex = nil
@@ -609,7 +671,7 @@ function ns:OnSaveDialogConfirm()
         return
     end
 
-    -- Name collision check when creating new
+    -- Name collision check
     if editingSetIndex then
         local old = self.charDB.sets[editingSetIndex]
         if old and old.name:lower() ~= name:lower() then
@@ -619,6 +681,12 @@ function ns:OnSaveDialogConfirm()
                     return
                 end
             end
+        end
+    else
+        -- New set: check for duplicate name
+        if self:GetSetByName(name) then
+            ns.Print("A set named \"" .. name .. "\" already exists. Use a different name or edit the existing set.")
+            return
         end
     end
 

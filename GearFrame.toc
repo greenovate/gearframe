@@ -2,7 +2,7 @@
 ## Title: GearFrame
 ## Notes: Equipment Manager for TBC Classic Anniversary — mirrors retail WoW's Equipment Manager.
 ## Author: Evild
-## Version: 1.0.0
+## Version: 1.2.0
 ## SavedVariables: GearFrameDB
 ## SavedVariablesPerCharacter: GearFrameCharDB
 
@@ -13,4 +13,5 @@ Equip.lua
 UI.lua
 Flyout.lua
 Tooltips.lua
+Protection.lua
 Settings.lua
