@@ -4,7 +4,7 @@
 ------------------------------------------------------------------------
 local addonName, ns = ...
 
-ns.version = "1.2.0"
+ns.version = "1.2.2"
 ns.MAX_SETS = 20
 
 ------------------------------------------------------------------------
@@ -270,6 +270,8 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if ns.db.hideBoE == nil then ns.db.hideBoE = false end
         if ns.db.panelCollapsed == nil then ns.db.panelCollapsed = false end
         if ns.db.protectSetItems == nil then ns.db.protectSetItems = true end
+        if ns.db.panelDetachable == nil then ns.db.panelDetachable = false end
+        if ns.db.panelPos == nil then ns.db.panelPos = nil end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         if not ns.initialized then

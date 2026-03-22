@@ -5,7 +5,7 @@
 local _, ns = ...
 
 local SETTINGS_WIDTH  = 320
-local SETTINGS_HEIGHT = 300
+local SETTINGS_HEIGHT = 340
 
 ------------------------------------------------------------------------
 -- Public init (called from Core.lua after DB is ready)
@@ -157,6 +157,36 @@ function ns:CreateSettingsPanel()
         protText:SetText("Warn before selling/deleting/banking set items")
         protText:SetFontObject("GameFontHighlightSmall")
     end
+
+    -- Detachable panel checkbox
+    local detachCheck = CreateFrame("CheckButton", "GearFrameDetachCheck", panel, "UICheckButtonTemplate")
+    detachCheck:SetSize(22, 22)
+    detachCheck:SetPoint("TOPLEFT", 18, -194)
+    detachCheck:SetChecked(ns.db.panelDetachable or false)
+    detachCheck:SetScript("OnClick", function(self)
+        ns.db.panelDetachable = self:GetChecked() and true or false
+        if ns.db.panelDetachable then
+            ns.Print("Panel is now movable (Alt + Left-click drag to reposition).")
+        else
+            ns.Print("Panel locked to character frame.")
+            ns:ResetPanelPosition()
+        end
+    end)
+    local detachText = _G[detachCheck:GetName() .. "Text"]
+    if detachText then
+        detachText:SetText("Allow moving panel (Alt + Left-click drag)")
+        detachText:SetFontObject("GameFontHighlightSmall")
+    end
+
+    -- Reset position button
+    local resetBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
+    resetBtn:SetSize(130, 22)
+    resetBtn:SetPoint("TOPLEFT", 40, -220)
+    resetBtn:SetText("Reset Position")
+    resetBtn:SetScript("OnClick", function()
+        ns:ResetPanelPosition()
+    end)
+    ns.Themes:SkinButton(resetBtn)
 
     -- Close button
     local closeBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")

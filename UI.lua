@@ -107,6 +107,19 @@ local function GetAnchorFrame()
 end
 
 ------------------------------------------------------------------------
+-- Reset panel position back to anchored on character frame
+------------------------------------------------------------------------
+function ns:ResetPanelPosition()
+    if not ns.setPanel then return end
+    ns.db.panelPos = nil
+    local anchor = GetAnchorFrame()
+    ns.setPanel:ClearAllPoints()
+    ns.setPanel:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 0, 0)
+    ns.setPanel:SetPoint("BOTTOMLEFT", anchor, "BOTTOMRIGHT", 0, 0)
+    ns.Print("Panel position reset to character frame.")
+end
+
+------------------------------------------------------------------------
 -- Toggle button — tab on the right edge of the character frame border
 ------------------------------------------------------------------------
 function ns:CreateToggleButton()
@@ -187,7 +200,43 @@ function ns:CreateSetPanel()
     panel:SetBackdropBorderColor(0.4, 0.4, 0.4, 1)
     panel:SetFrameLevel(CharacterFrame:GetFrameLevel() + 2)
     panel:EnableMouse(true)
+    panel:SetMovable(true)
+    panel:SetClampedToScreen(true)
     ns.setPanel = panel
+
+    -- Alt+drag to detach/move
+    panel:SetScript("OnMouseDown", function(self, button)
+        if button == "LeftButton" and IsAltKeyDown() and ns.db.panelDetachable then
+            -- Capture current position before detaching
+            local left, top = self:GetLeft(), self:GetTop()
+            local height = self:GetHeight()
+            self:ClearAllPoints()
+            self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            self:SetHeight(height)
+            self:StartMoving()
+            self.isMoving = true
+        end
+    end)
+    panel:SetScript("OnMouseUp", function(self, button)
+        if self.isMoving then
+            self:StopMovingOrSizing()
+            self.isMoving = false
+            -- Save position
+            local left, top = self:GetLeft(), self:GetTop()
+            local height = self:GetHeight()
+            ns.db.panelPos = { x = left, y = top, h = height }
+            self:ClearAllPoints()
+            self:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", left, top)
+            self:SetHeight(height)
+        end
+    end)
+
+    -- Restore saved detached position if it exists
+    if ns.db.panelDetachable and ns.db.panelPos then
+        panel:ClearAllPoints()
+        panel:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ns.db.panelPos.x, ns.db.panelPos.y)
+        panel:SetHeight(ns.db.panelPos.h or 400)
+    end
 
     -- Title -----------------------------------------------------------
     local title = panel:CreateFontString(nil, "OVERLAY", "GameFontNormal")
