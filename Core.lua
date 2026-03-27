@@ -215,13 +215,16 @@ function ns.GetBagItemsForSlot(slotID)
 end
 
 -- Find item by ID in bags. Returns bag, slot or nil, nil.
-function ns.FindItemInBags(itemID)
+-- excludeSlots: optional table { ["bag:slot"]=true } of positions to skip (for duplicate items)
+function ns.FindItemInBags(itemID, excludeSlots)
     for bag = 0, 4 do
         local numSlots = ns.GetContainerNumSlots(bag)
         for slot = 1, numSlots do
-            local link = ns.GetContainerItemLink(bag, slot)
-            if link and ns.GetItemIDFromLink(link) == itemID then
-                return bag, slot
+            if not (excludeSlots and excludeSlots[bag .. ":" .. slot]) then
+                local link = ns.GetContainerItemLink(bag, slot)
+                if link and ns.GetItemIDFromLink(link) == itemID then
+                    return bag, slot
+                end
             end
         end
     end

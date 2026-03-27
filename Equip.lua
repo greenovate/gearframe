@@ -10,6 +10,8 @@ local swapSetName = nil  -- name of set being swapped (for status message)
 local swapFailed  = 0
 local swapDone    = 0
 local failedItems = {}    -- { "SlotName: ItemName", ... }
+local swapSetItems = {}  -- full set items table for the current swap (to avoid cannibalizing)
+local claimedBagSlots = {} -- { ["bag:slot"] = true } bag positions already picked up this swap
 
 ------------------------------------------------------------------------
 -- Main equip entry point
@@ -56,6 +58,8 @@ function ns:EquipSetData(set)
     swapDone   = 0
     swapSetName = set.name
     failedItems = {}
+    swapSetItems = set.items
+    claimedBagSlots = {}
 
     -- Pass 1: slots that need to be emptied
     for slotID, desiredID in pairs(set.items) do
@@ -143,9 +147,10 @@ function ns:EquipItemToSlot(itemID, targetSlot)
     -- Clear any existing cursor item safely
     if CursorHasItem() then ClearCursor() end
 
-    -- Look in bags
-    local bag, slot = ns.FindItemInBags(itemID)
+    -- Look in bags (skip slots already claimed by earlier swaps in this set)
+    local bag, slot = ns.FindItemInBags(itemID, claimedBagSlots)
     if bag and slot then
+        claimedBagSlots[bag .. ":" .. slot] = true
         ClearCursor()
         ns.PickupContainerItem(bag, slot)
         PickupInventoryItem(targetSlot)
@@ -153,18 +158,25 @@ function ns:EquipItemToSlot(itemID, targetSlot)
     end
 
     -- Item might be in another equipped slot (e.g., ring in wrong finger)
+    -- But don't steal from a slot that already has the correct item for this set
     for sid = 1, ns.NUM_EQUIP_SLOTS do
         if sid ~= targetSlot and GetInventoryItemID("player", sid) == itemID then
-            if self:UnequipSlot(sid) then
-                local b, s = ns.FindItemInBags(itemID)
-                if b and s then
-                    ClearCursor()
-                    ns.PickupContainerItem(b, s)
-                    PickupInventoryItem(targetSlot)
-                    return true
+            -- If this set also wants this item in that slot, don't take it
+            if swapSetItems[sid] == itemID then
+                -- That slot is already satisfied — skip, look for another source
+            else
+                if self:UnequipSlot(sid) then
+                    local b, s = ns.FindItemInBags(itemID, claimedBagSlots)
+                    if b and s then
+                        claimedBagSlots[b .. ":" .. s] = true
+                        ClearCursor()
+                        ns.PickupContainerItem(b, s)
+                        PickupInventoryItem(targetSlot)
+                        return true
+                    end
                 end
+                break
             end
-            break
         end
     end
 
