@@ -5,7 +5,7 @@
 local _, ns = ...
 
 local SETTINGS_WIDTH  = 320
-local SETTINGS_HEIGHT = 340
+local SETTINGS_HEIGHT = 370
 
 ------------------------------------------------------------------------
 -- Public init (called from Core.lua after DB is ready)
@@ -178,10 +178,30 @@ function ns:CreateSettingsPanel()
         detachText:SetFontObject("GameFontHighlightSmall")
     end
 
+    -- Macro sync checkbox
+    local syncCheck = CreateFrame("CheckButton", "GearFrameSyncCheck", panel, "UICheckButtonTemplate")
+    syncCheck:SetSize(22, 22)
+    syncCheck:SetPoint("TOPLEFT", 18, -220)
+    syncCheck:SetChecked(ns.db.macroSync ~= false)  -- default ON
+    syncCheck:SetScript("OnClick", function(self)
+        ns.db.macroSync = self:GetChecked() and true or false
+        if ns.db.macroSync then
+            ns.Print("Macro sync enabled — sets will persist across computers.")
+            ns:SyncToMacros()
+        else
+            ns.Print("Macro sync disabled.")
+        end
+    end)
+    local syncText = _G[syncCheck:GetName() .. "Text"]
+    if syncText then
+        syncText:SetText("Sync sets to macros (cross-computer persistence)")
+        syncText:SetFontObject("GameFontHighlightSmall")
+    end
+
     -- Reset position button
     local resetBtn = CreateFrame("Button", nil, panel, "UIPanelButtonTemplate")
     resetBtn:SetSize(130, 22)
-    resetBtn:SetPoint("TOPLEFT", 40, -220)
+    resetBtn:SetPoint("TOPLEFT", 40, -248)
     resetBtn:SetText("Reset Position")
     resetBtn:SetScript("OnClick", function()
         ns:ResetPanelPosition()

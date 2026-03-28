@@ -275,6 +275,7 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
         if ns.db.protectSetItems == nil then ns.db.protectSetItems = true end
         if ns.db.panelDetachable == nil then ns.db.panelDetachable = false end
         if ns.db.panelPos == nil then ns.db.panelPos = nil end
+        if ns.db.macroSync == nil then ns.db.macroSync = true end
 
     elseif event == "PLAYER_ENTERING_WORLD" then
         if not ns.initialized then
@@ -293,6 +294,15 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
             SlashCmdList["GEARFRAME"] = function(msg) ns:SlashHandler(msg) end
 
             ns.Print("v" .. ns.version .. " loaded.  /gf or open your Character panel.")
+
+            -- Macro sync: auto-import if local DB is empty but macros have data
+            C_Timer.After(2, function()
+                if ns.db.macroSync ~= false and #ns.charDB.sets == 0 then
+                    if ns:HasMacroSets() then
+                        ns:ImportFromMacros()
+                    end
+                end
+            end)
         end
     end
 end)
@@ -319,6 +329,7 @@ function ns:SlashHandler(msg)
         ns.Print("/gf equip <name> — equip a set")
         ns.Print("/gf save <name> — quick-save current gear")
         ns.Print("/gf delete <name> — delete a set")
+        ns.Print("/gf sync — import/sync sets across computers via macros")
 
     elseif msg == "list" then
         if #ns.charDB.sets == 0 then
@@ -337,5 +348,18 @@ function ns:SlashHandler(msg)
 
     elseif msg:find("^delete ") then
         ns:DeleteSetByName(msg:sub(8):trim())
+
+    elseif msg == "sync" then
+        if ns.db.macroSync == false then
+            ns.Print("Macro sync is disabled. Enable it in /gf settings.")
+            return
+        end
+        local imported = ns:ImportFromMacros()
+        if imported == 0 then
+            ns.Print("No new sets to import from macros.")
+        end
+        -- Also push current sets to macros
+        ns:SyncToMacros()
+        ns.Print("Sets synced to macros (" .. #ns.charDB.sets .. " set" .. (#ns.charDB.sets == 1 and "" or "s") .. ").")
     end
 end

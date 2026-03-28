@@ -70,6 +70,8 @@ function ns:SaveSet(name, slots, icon)
 
     -- Refresh UI
     if ns.RefreshSetList then ns:RefreshSetList() end
+    -- Sync to macros for cross-PC persistence
+    if ns.SyncToMacros then ns:SyncToMacros() end
     return true
 end
 
@@ -91,6 +93,8 @@ function ns:DeleteSet(index)
     ns.Print("Deleted set: " .. name)
     if ns.ClearSetSelection then ns:ClearSetSelection() end
     if ns.RefreshSetList then ns:RefreshSetList() end
+    -- Sync to macros for cross-PC persistence
+    if ns.SyncToMacros then ns:SyncToMacros() end
 end
 
 function ns:DeleteSetByName(name)
@@ -232,4 +236,133 @@ function ns:MoveSet(fromIndex, toIndex)
     local set = table.remove(sets, fromIndex)
     table.insert(sets, toIndex, set)
     if ns.RefreshSetList then ns:RefreshSetList() end
+end
+
+------------------------------------------------------------------------
+-- Macro Sync — persist sets to per-character macros for cross-PC sync
+-- Macros are server-side so they follow the character everywhere.
+-- Format: GF|setName|iconFileID|slotID:itemID,slotID:itemID,...
+-- One macro per set. Macro names: GF_01 through GF_18 (TBC limit).
+------------------------------------------------------------------------
+local MACRO_PREFIX  = "GF_"
+local MAX_MACRO_SYNC = 18   -- TBC per-character macro limit
+
+-- Serialize a set into a compact string
+function ns:SerializeSet(set)
+    if not set then return nil end
+    local parts = {}
+    for slotID, itemID in pairs(set.items) do
+        if itemID and itemID > 0 then
+            parts[#parts + 1] = slotID .. ":" .. itemID
+        end
+    end
+    table.sort(parts)  -- deterministic order
+    local icon = type(set.icon) == "number" and set.icon or 134400
+    return "GF|" .. set.name .. "|" .. icon .. "|" .. table.concat(parts, ",")
+end
+
+-- Deserialize a macro body back into a set table
+function ns:DeserializeSet(body)
+    if not body or body:sub(1, 3) ~= "GF|" then return nil end
+    local name, iconStr, itemStr = body:match("^GF|(.+)|(%d+)|(.+)$")
+    if not name or not iconStr or not itemStr then return nil end
+    local items = {}
+    for slotID, itemID in itemStr:gmatch("(%d+):(%d+)") do
+        items[tonumber(slotID)] = tonumber(itemID)
+    end
+    return {
+        name  = name,
+        icon  = tonumber(iconStr),
+        items = items,
+    }
+end
+
+-- Write all current sets to per-character macros
+function ns:SyncToMacros()
+    if ns.db and ns.db.macroSync == false then return end
+    if InCombatLockdown() then return end  -- macro API restricted in combat
+
+    local sets = self.charDB.sets
+    local numGeneral, numPerChar = GetNumMacros()
+
+    -- Write one macro per set (up to MAX_MACRO_SYNC)
+    for i = 1, MAX_MACRO_SYNC do
+        local macroName = MACRO_PREFIX .. string.format("%02d", i)
+        local macroIndex = GetMacroIndexByName(macroName)
+
+        if i <= #sets then
+            local body = self:SerializeSet(sets[i])
+            if body and #body <= 255 then
+                if macroIndex > 0 then
+                    EditMacro(macroIndex, macroName, "INV_Misc_QuestionMark", body, 1)
+                else
+                    -- Check if we have room for a new per-character macro
+                    _, numPerChar = GetNumMacros()
+                    if numPerChar < 18 then
+                        CreateMacro(macroName, "INV_Misc_QuestionMark", body, 1)
+                    end
+                end
+            elseif body and #body > 255 then
+                -- Set name too long to fit — truncate name and retry
+                local truncSet = { name = sets[i].name:sub(1, 20), icon = sets[i].icon, items = sets[i].items }
+                body = self:SerializeSet(truncSet)
+                if body and #body <= 255 then
+                    if macroIndex > 0 then
+                        EditMacro(macroIndex, macroName, "INV_Misc_QuestionMark", body, 1)
+                    else
+                        _, numPerChar = GetNumMacros()
+                        if numPerChar < 18 then
+                            CreateMacro(macroName, "INV_Misc_QuestionMark", body, 1)
+                        end
+                    end
+                end
+            end
+        else
+            -- Excess macro from a previously deleted set — clean up
+            if macroIndex > 0 then
+                DeleteMacro(macroIndex)
+            end
+        end
+    end
+end
+
+-- Import sets from macros (used when logging in on a new PC)
+function ns:ImportFromMacros()
+    local imported = 0
+    for i = 1, MAX_MACRO_SYNC do
+        local macroName = MACRO_PREFIX .. string.format("%02d", i)
+        local macroIndex = GetMacroIndexByName(macroName)
+        if macroIndex > 0 then
+            local body = GetMacroBody(macroIndex)
+            local set = self:DeserializeSet(body)
+            if set then
+                -- Don't duplicate — check if we already have this set name
+                local existing = self:GetSetByName(set.name)
+                if not existing then
+                    table.insert(self.charDB.sets, set)
+                    imported = imported + 1
+                end
+            end
+        end
+    end
+    if imported > 0 then
+        ns.Print("Imported " .. imported .. " set(s) from macro sync.")
+        if ns.RefreshSetList then ns:RefreshSetList() end
+    end
+    return imported
+end
+
+-- Check if macros contain set data (for auto-detect on login)
+function ns:HasMacroSets()
+    for i = 1, MAX_MACRO_SYNC do
+        local macroName = MACRO_PREFIX .. string.format("%02d", i)
+        local macroIndex = GetMacroIndexByName(macroName)
+        if macroIndex > 0 then
+            local body = GetMacroBody(macroIndex)
+            if body and body:sub(1, 3) == "GF|" then
+                return true
+            end
+        end
+    end
+    return false
 end
