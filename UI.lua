@@ -327,10 +327,8 @@ function ns:CreateSetPanel()
             -- Status summary line
             if status == "equipped" then
                 GameTooltip:AddLine("Status: Fully equipped", 0, 1, 0)
-            elseif status == "ready" then
+            elseif status == "ready" or status == "modified" then
                 GameTooltip:AddLine("Status: Ready to equip (" .. equipped .. "/" .. total .. " worn)", 0.5, 0.8, 1)
-            elseif status == "modified" then
-                GameTooltip:AddLine("Status: Modified — " .. #changed .. " slot(s) changed since last save", 1, 0.6, 0)
             elseif status == "missing" then
                 GameTooltip:AddLine("Status: " .. #missing .. " item(s) MISSING — cannot fully equip", 1, 0.2, 0.2)
             end
@@ -486,10 +484,8 @@ function ns:RefreshSetList()
                 btn.nameText:SetTextColor(0.2, 1, 0.2)       -- green: fully equipped
             elseif status == "missing" then
                 btn.nameText:SetTextColor(1, 0.3, 0.3)       -- red: items missing
-            elseif status == "modified" then
-                btn.nameText:SetTextColor(1, 0.65, 0.15)     -- orange: changed since save
             else
-                btn.nameText:SetTextColor(1, 1, 1)            -- white: ready
+                btn.nameText:SetTextColor(1, 1, 1)            -- white: ready / available
             end
 
             btn:Show()
