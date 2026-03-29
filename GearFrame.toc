@@ -2,7 +2,7 @@
 ## Title: GearFrame
 ## Notes: Equipment Manager for TBC Classic Anniversary — mirrors retail WoW's Equipment Manager.
 ## Author: Evild
-## Version: 1.2.2
+## Version: 1.3.0
 ## SavedVariables: GearFrameDB
 ## SavedVariablesPerCharacter: GearFrameCharDB
 
